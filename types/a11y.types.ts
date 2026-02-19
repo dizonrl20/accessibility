@@ -91,11 +91,44 @@ export interface AxeResults {
 
 // --- Report config (engine-tagged artifacts) ---
 
-export type TestingEngine = 'Axe-core' | 'WAVE API';
+export type TestingEngine = 'Axe-core' | 'WAVE API' | 'A11y Tree' | 'Lighthouse';
 
 export interface ReportConfig {
   url: string;
   engineName: TestingEngine;
   timestamp: string;
-  data: AxeResults | WaveApiResponse;
+  data:
+    | AxeResults
+    | WaveApiResponse
+    | import('./a11y-tree.types.js').A11yTreeResult
+    | import('./lighthouse.types.js').LighthouseResult;
+  /** Axe only: when true, report only violations (actionable). When false/undefined, report violations + incomplete with actionable/informational pills. */
+  actionableOnly?: boolean;
+  /** Optional suffix for filenames (e.g. '-actionable' for report-axe-...-actionable.html). */
+  reportSuffix?: string;
+}
+
+// --- WAVE browser capture (parsed from HTML) ---
+
+export type WaveCaptureTab = 'Details' | 'Reference' | 'Tab Order' | 'Structure' | 'Contrast';
+
+export interface WaveCaptureFinding {
+  category: string;
+  description: string;
+  tab: WaveCaptureTab;
+  wcagRef?: string;
+}
+
+export interface WaveJiraIssue {
+  tab: WaveCaptureTab;
+  summary: string;
+  description: string;
+  jiraText: string;
+  /** true = Error/Contrast/Alert (fix or review); false = Feature/Structure/ARIA (inventory, no action unless wrong) */
+  actionable: boolean;
+  /** Unified report fields (from WCAG reference when available) */
+  wcagNumber?: string;
+  wcagCause?: string;
+  actual?: string;
+  expectedFix?: string;
 }
