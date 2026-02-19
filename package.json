@@ -1,0 +1,23 @@
+{
+  "name": "accessibility-a11y-suite",
+  "version": "1.0.0",
+  "description": "Modular WCAG 2.2 AA / AODA accessibility testing with Axe-core and WAVE API",
+  "type": "module",
+  "scripts": {
+    "a11y": "tsx scripts/run-a11y.ts",
+    "a11y:axe": "tsx scripts/run-a11y.ts --engine axe",
+    "a11y:wave": "tsx scripts/run-a11y.ts --engine wave",
+    "test": "playwright test",
+    "test:a11y": "playwright test tests/accessibility-module.spec.ts"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.10.2",
+    "playwright": "^1.49.0",
+    "@playwright/test": "^1.49.0",
+    "@types/node": "^22.10.0",
+    "commander": "^12.1.0",
+    "csv-parse": "^5.6.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
