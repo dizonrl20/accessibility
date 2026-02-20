@@ -34,6 +34,8 @@ export interface LighthouseResult {
     description: string;
     displayValue?: string;
     score: number | null;
+     /** Raw WCAG tags from Lighthouse (e.g. wcag412, wcag143) */
+     wcagTags?: string[];
     items: LighthouseAuditItem[];
   }[];
 }

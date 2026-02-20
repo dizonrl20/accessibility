@@ -160,3 +160,14 @@ Or: `npm run test:a11y` (uses `TARGET_URL` from env, default `https://example.co
 - `scripts/wave-capture-to-jira.ts` — Parse WAVE capture → CSV/MD/HTML JIRA issues  
 - `tests/accessibility-module.spec.ts` — Axe test + manual checklist comments  
 - `docs/wcag22aa-wave-reference.md` — WCAG 2.2 ↔ WAVE reference for JIRA text  
+
+┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│  ENGINE            │  COMMAND(S)             │  TOKEN?  │  MECHANISM                        │
+├────────────────────┼─────────────────────────┼──────────┼───────────────────────────────────┤
+│  Axe-core          │  npm run a11y:axe       │  None    │  Local Playwright + axe-core      │
+│  A11y Tree         │  npm run a11y:tree      │  None    │  Local Playwright CDP             │
+│  Lighthouse        │  npm run a11y:lighthouse│  None    │  Local Chrome + Lighthouse NPM    │
+│  WAVE Browser      │  npm run a11y:wave-ext  │  None    │  Local Extension + Manual Capture │
+│  WAVE API          │  npm run a11y:wave      │  Required│  WebAIM Paid API (External Call)  │
+└─────────────────────────────────────────────────────────────────────────────────────────────┘
+The only thing that needs a token is a11y:wave (the WAVE API engine), which hits WebAIM's external service. Everything else — Axe, Tree, Lighthouse, and the WAVE browser capture parser — runs 100% locally with just Node.js, Playwright, and Chrome. Fully CI/CD-friendly without any secrets for those four.

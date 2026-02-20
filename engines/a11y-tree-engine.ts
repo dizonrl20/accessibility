@@ -30,30 +30,61 @@ function axValueToString(v: AXValue | undefined): string | undefined {
   return String(v.value).trim() || undefined;
 }
 
-/** Build tree from CDP flat node list; filter ignored nodes. */
+/** Build tree from CDP flat node list. Skips ignored nodes and reparents their children to the nearest non-ignored ancestor. */
 function buildTreeFromAXNodes(nodes: AXNode[]): SnapshotNode | null {
+  const k = (id: unknown) => String(id);
   const byId = new Map<string, AXNode>();
-  nodes.forEach((n) => byId.set(n.nodeId, n));
+  nodes.forEach((n) => byId.set(k(n.nodeId), n));
+
   const treeNodes = new Map<string, SnapshotNode>();
   nodes.forEach((n) => {
     if (n.ignored) return;
-    const role = axValueToString(n.role);
-    const name = axValueToString(n.name);
-    const description = axValueToString(n.description);
-    treeNodes.set(n.nodeId, { role, name, description, children: [] });
+    treeNodes.set(k(n.nodeId), {
+      role: axValueToString(n.role),
+      name: axValueToString(n.name),
+      description: axValueToString(n.description),
+      children: [],
+    });
   });
-  treeNodes.forEach((snap, nodeId) => {
-    const ax = byId.get(nodeId);
-    if (!ax?.childIds?.length) return;
-    const children: SnapshotNode[] = [];
-    for (const cid of ax.childIds) {
-      const child = treeNodes.get(cid);
-      if (child) children.push(child);
+
+  /** Recursively collect non-ignored descendants, skipping through ignored intermediaries. */
+  function collectVisibleChildren(childIds: string[]): SnapshotNode[] {
+    const result: SnapshotNode[] = [];
+    for (const cid of childIds) {
+      const snap = treeNodes.get(k(cid));
+      if (snap) {
+        result.push(snap);
+      } else {
+        const raw = byId.get(k(cid));
+        if (raw?.childIds?.length) result.push(...collectVisibleChildren(raw.childIds));
+      }
     }
-    snap.children = children;
+    return result;
+  }
+
+  treeNodes.forEach((snap, nid) => {
+    const ax = byId.get(nid);
+    if (ax?.childIds?.length) snap.children = collectVisibleChildren(ax.childIds);
   });
-  const rootId = nodes.find((n) => !n.ignored && (!n.parentId || !byId.has(n.parentId)))?.nodeId;
-  return (rootId && treeNodes.get(rootId)) ?? (treeNodes.size > 0 ? treeNodes.values().next().value ?? null : null);
+
+  const rootNode = nodes.find((n) => !n.ignored && (!n.parentId || !byId.has(k(n.parentId))));
+  if (rootNode) {
+    const rootSnap = treeNodes.get(k(rootNode.nodeId));
+    if (rootSnap) return rootSnap;
+  }
+
+  // Fallback: root itself may be ignored — walk from the very first node through ignored intermediaries
+  const firstNode = nodes[0];
+  if (firstNode) {
+    const snap = treeNodes.get(k(firstNode.nodeId));
+    if (snap) return snap;
+    if (firstNode.childIds?.length) {
+      const virtual: SnapshotNode = { role: 'RootWebArea', children: collectVisibleChildren(firstNode.childIds) };
+      return virtual;
+    }
+  }
+
+  return treeNodes.size > 0 ? treeNodes.values().next().value ?? null : null;
 }
 
 const ROLES_LINK = new Set(['link']);
@@ -164,6 +195,11 @@ export async function runA11yTreeScan(page: Page, url: string): Promise<A11yTree
   }
   const client = await newCDPSession.call(context, page);
   await (client.send as (m: string, p?: object) => Promise<unknown>)('Accessibility.enable');
+
+  // Force a fresh tree: wait for pending DOM/accessibility updates (e.g. after Axe injection)
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  await new Promise((r) => setTimeout(r, 1000));
+
   const result = (await (client.send as (m: string, p?: object) => Promise<{ nodes?: AXNode[] }>)('Accessibility.getFullAXTree')) as { nodes?: AXNode[] };
   const nodes = result?.nodes ?? [];
   const snapshot = buildTreeFromAXNodes(nodes);

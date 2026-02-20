@@ -83,16 +83,23 @@ async function main(): Promise<void> {
         try {
           const context = await browser.newContext({
             viewport: { width: 1280, height: 720 },
+            userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
           });
           const page = await context.newPage();
-          const settleMs = Math.max(0, parseInt(process.env.A11Y_SETTLE_MS ?? '3000', 10) || 0);
+          const settleMs = Math.max(0, parseInt(process.env.A11Y_SETTLE_MS ?? '8000', 10) || 0);
           if (runTree && !runAxe) {
-            await page.goto(url, { waitUntil: 'load', timeout: 30000 });
+            await page.goto(url, { waitUntil: 'networkidle', timeout: 60000 }).catch(async () => {
+              await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+            });
             if (settleMs > 0) await new Promise((r) => setTimeout(r, settleMs));
-            const contentWaitMs = Math.max(0, parseInt(process.env.A11Y_CONTENT_WAIT_MS ?? '15000', 10) || 0);
+            const contentWaitMs = Math.max(0, parseInt(process.env.A11Y_CONTENT_WAIT_MS ?? '30000', 10) || 0);
             if (contentWaitMs > 0) {
               await page.waitForFunction(
-                () => document.querySelectorAll('a[href], button, [role="button"], input:not([type="hidden"])').length >= 2,
+                () => {
+                  const bodyLen = document.body?.innerHTML?.length ?? 0;
+                  const interactive = document.querySelectorAll('a[href], button, [role="button"], input:not([type="hidden"]), [tabindex]:not([tabindex="-1"]), select, textarea, [role="link"], [role="tab"], nav, header, main, footer, h1, h2, h3, img').length;
+                  return bodyLen > 500 && interactive >= 2;
+                },
                 { timeout: contentWaitMs }
               ).catch(() => {});
             }

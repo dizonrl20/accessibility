@@ -10,6 +10,7 @@ import type {
 } from '../types/a11y.types.js';
 import type { A11yTreeResult, A11yTreeIssue } from '../types/a11y-tree.types.js';
 import type { LighthouseResult } from '../types/lighthouse.types.js';
+import { mapWcagTags, resolveWcagForLighthouseAudit } from './wcag-dictionary.js';
 
 const REPORT_DIR = join(process.cwd(), 'a11y-reports');
 
@@ -131,8 +132,6 @@ export function generateReport(config: ReportConfig): { htmlPath: string; csvPat
     const byRuleList = items
       .map(({ result: v, actionable }) => `<li><code>${escapeHtml(v.id)}</code>: ${v.nodes.length} node(s)${actionable ? '' : ' <span class="status-pill status-informational">Informational</span>'}</li>`)
       .join('');
-    const wcagTagsToCriteria = (tags: string[]): string =>
-      tags.filter((t) => /wcag|cat\./.test(t)).join(', ') || '—';
     const issueCards = items
       .map(
         (entry, idx) => {
@@ -141,9 +140,25 @@ export function generateReport(config: ReportConfig): { htmlPath: string; csvPat
           const severityClass = impact in bySeverity ? `severity-${impact}` : 'severity-moderate';
           const jiraBase = `*Axe [${v.id}] ${v.impact ?? 'moderate'}*\n${v.help ?? ''}\nWCAG: ${v.tags.join(', ')}\nSelectors: ${v.nodes.map((n) => n.target?.join(' ')).join('; ')}`;
           const jiraPayload = escapeHtml(entry.actionable ? jiraBase : `*Status:* Informational (manual review)\n${jiraBase}`);
-          const elementsSnippet = v.nodes.map((n) => (n.html ? `<code>${escapeHtml(n.html.slice(0, 300))}${n.html.length > 300 ? '…' : ''}</code>` : '')).filter(Boolean).join('<br/>') || v.nodes.map((n) => `<code>${escapeHtml(n.target?.join(' ') ?? '')}</code>`).join(', ') || '—';
+          const elementsSnippet =
+            v.nodes
+              .map((n) =>
+                n.html
+                  ? `<code>${escapeHtml(n.html.slice(0, 300))}${n.html.length > 300 ? '…' : ''}</code>`
+                  : ''
+              )
+              .filter(Boolean)
+              .join('<br/>') ||
+            v.nodes.map((n) => `<code>${escapeHtml(n.target?.join(' ') ?? '')}</code>`).join(', ') ||
+            '—';
           const whereLocated = v.nodes.map((n) => n.target?.join(' ') ?? '—').join('; ') || '—';
-          const expectedFix = (v.description ?? v.help ?? '') + (v.helpUrl ? ` See: ${v.helpUrl}` : '');
+          const wcagLabels = mapWcagTags(v.tags);
+          const wcagCriteria = wcagLabels.length ? wcagLabels.join(', ') : 'Best Practice';
+          const actualSummary =
+            v.nodes.length > 0
+              ? `${v.nodes.length} element(s) currently fail this rule. Example selector: ${v.nodes[0].target?.join(' ') ?? 'n/a'}.`
+              : 'At least one element on the page currently fails this rule.';
+          const expectedFix = (v.help ?? '') + (v.helpUrl ? ` See: ${v.helpUrl}` : '');
           const cardClass = entry.actionable ? 'issue-actionable' : 'issue-informational';
           const pill = entry.actionable ? '<span class="severity-pill ' + severityClass + '">' + escapeHtml(String(v.impact ?? 'moderate')) + '</span>' : '<span class="status-pill status-informational">Informational</span>';
           const sections = [
@@ -151,9 +166,14 @@ export function generateReport(config: ReportConfig): { htmlPath: string; csvPat
             sec('Description', v.description ?? v.help ?? ''),
             sec('Element(s)', elementsSnippet),
             sec('Where located', whereLocated),
-            sec('WCAG number', wcagTagsToCriteria(v.tags)),
-            sec('WCAG cause of failure', v.description ?? ''),
-            sec('Actual', v.help ?? ''),
+            sec('WCAG number', wcagCriteria),
+            sec(
+              'WCAG cause of failure',
+              wcagLabels.length > 0
+                ? `Current implementation does not satisfy ${wcagLabels.join(', ')} for this rule.`
+                : 'Page content does not satisfy this Axe accessibility rule.'
+            ),
+            sec('Actual', actualSummary),
             sec('Expected + proposed fix', expectedFix),
           ].join('');
           return `
@@ -256,13 +276,13 @@ export function generateReport(config: ReportConfig): { htmlPath: string; csvPat
   } else if (engineName === 'A11y Tree' && 'inventory' in data && 'issues' in data) {
     const tree = data as A11yTreeResult;
     const inv = tree.inventory;
-    const treeKindToWcag: Record<string, string> = {
-      'nameless-link': '2.4.4, 4.1.2',
-      'nameless-button': '2.1.1, 4.1.2',
-      'nameless-input': '1.3.1, 4.1.2',
-      'video-no-captions': '1.2.2',
-      'audio-no-transcript': '1.2.1',
-      'iframe-no-title': '2.4.1',
+    const treeKindToWcagTags: Record<string, string[]> = {
+      'nameless-link': ['wcag244', 'wcag412'],
+      'nameless-button': ['wcag211', 'wcag412'],
+      'nameless-input': ['wcag131', 'wcag412'],
+      'video-no-captions': ['wcag122'],
+      'audio-no-transcript': ['wcag121'],
+      'iframe-no-title': ['wcag241'],
     };
     const treeKindToExpected: Record<string, string> = {
       'nameless-link': 'Provide accessible name (visible text or aria-label) so purpose is clear to assistive tech.',
@@ -303,7 +323,8 @@ export function generateReport(config: ReportConfig): { htmlPath: string; csvPat
             ? `*A11y Tree [${i.kind}]*\n${i.summary}\nRole: ${i.role}${i.name ? ` | Name: ${i.name}` : ''}`
             : `*Status:* Informational\n*A11y Tree [${i.kind}]*\n${i.summary}`;
           const jiraPayload = escapeHtml(jiraText);
-          const wcagNum = treeKindToWcag[i.kind] ?? '—';
+          const wcagLabelsTree = mapWcagTags(treeKindToWcagTags[i.kind] ?? []);
+          const wcagNum = wcagLabelsTree.length ? wcagLabelsTree.join(', ') : '—';
           const expectedFix = treeKindToExpected[i.kind] ?? i.summary ?? '—';
           const elementDesc = [i.role, i.name].filter(Boolean).join(' · ') || '—';
           const sections = [
@@ -312,7 +333,12 @@ export function generateReport(config: ReportConfig): { htmlPath: string; csvPat
             sec('Element(s)', elementDesc),
             sec('Where located', '— (see tree / page for context)'),
             sec('WCAG number', wcagNum),
-            sec('WCAG cause of failure', i.summary ?? ''),
+            sec(
+              'WCAG cause of failure',
+              wcagLabelsTree.length > 0
+                ? `Current implementation does not satisfy ${wcagLabelsTree.join(', ')}.`
+                : i.summary ?? ''
+            ),
             sec('Actual', [i.role, i.name].filter(Boolean).join(' · ') || 'No accessible name'),
             sec('Expected + proposed fix', expectedFix),
           ].join('');
@@ -348,33 +374,6 @@ export function generateReport(config: ReportConfig): { htmlPath: string; csvPat
     `;
   } else if (engineName === 'Lighthouse' && 'issues' in data && 'score' in data) {
     const lh = data as LighthouseResult;
-    const lhAuditToWcag: Record<string, string> = {
-      'aria-valid-attr-value': '4.1.2',
-      'aria-valid-attr': '4.1.2',
-      'button-name': '2.1.1, 4.1.2',
-      'bypass': '2.4.1',
-      'color-contrast': '1.4.3',
-      'document-title': '2.4.2',
-      'duplicate-id-aria': '4.1.1',
-      'form-field-multiple-labels': '3.3.2',
-      'frame-title': '2.4.1',
-      'html-has-lang': '3.1.1',
-      'html-lang-valid': '3.1.1',
-      'image-alt': '1.1.1',
-      'input-image-alt': '1.1.1',
-      'label': '1.3.1, 4.1.2',
-      'link-name': '2.4.4, 4.1.2',
-      'list': '1.3.1',
-      'listitem': '1.3.1',
-      'meta-refresh': '2.2.1',
-      'meta-viewport': '1.4.4',
-      'object-alt': '1.1.1',
-      'tabindex': '2.4.3',
-      'td-headers-attr': '1.3.1',
-      'th-has-data-cells': '1.3.1',
-      'valid-aria-role': '4.1.2',
-      'video-caption': '1.2.2',
-    };
     const issueCards = lh.issues
       .map((issue, idx) => {
         const jiraText = `*Lighthouse [${issue.id}]* ${issue.title}\n${issue.description}\n${issue.items?.length ? 'Elements: ' + issue.items.map((i) => i.selector || i.snippet || '').filter(Boolean).join('; ') : ''}`;
@@ -387,16 +386,30 @@ export function generateReport(config: ReportConfig): { htmlPath: string; csvPat
           issue.items?.length > 0
             ? issue.items.map((i) => i.selector || i.snippet || i.nodeLabel || '—').join('; ')
             : '—';
-        const wcagNum = lhAuditToWcag[issue.id] ?? '—';
+        const wcagLabels = resolveWcagForLighthouseAudit(issue.id, issue.wcagTags);
+        const wcagNum = wcagLabels.length ? wcagLabels.join(', ') : 'Best Practice / WAI-ARIA';
+        const actualText =
+          issue.displayValue ??
+          (issue.items?.length
+            ? `${issue.items.length} element(s) currently fail this audit.`
+            : 'At least one element on the page currently fails this audit.');
+        const wcagCauseText =
+          wcagLabels.length > 0
+            ? `Current implementation does not satisfy ${wcagLabels.join(', ')} for this audit.`
+            : 'Current implementation does not satisfy this accessibility best practice / WAI-ARIA guidance.';
+        const expectedText =
+          (issue.description ?? 'Fix this audit per Lighthouse guidance.') +
+          (wcagLabels.length ? ` Fix per WCAG: ${wcagLabels.join(', ')}.` : '') +
+          ' See Lighthouse accessibility docs for details.';
         const sections = [
           sec('Title', issue.title),
           sec('Description', issue.description ?? ''),
           sec('Element(s)', elementsSnippet),
           sec('Where located', whereLocated),
           sec('WCAG number', wcagNum),
-          sec('WCAG cause of failure', issue.description ?? ''),
-          sec('Actual', issue.displayValue ?? issue.title ?? ''),
-          sec('Expected + proposed fix', issue.description + ' See Lighthouse accessibility docs for this audit.'),
+          sec('WCAG cause of failure', wcagCauseText),
+          sec('Actual', actualText),
+          sec('Expected + proposed fix', expectedText),
         ].join('');
         return `
       <div class="issue-card issue-actionable" data-jira="${jiraPayload}">
