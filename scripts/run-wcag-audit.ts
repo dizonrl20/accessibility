@@ -80,11 +80,29 @@ interface WcagAuditReport {
   };
 }
 
+const LIGHTHOUSE_SETTLE_MS = typeof process !== 'undefined' && process.env?.LIGHTHOUSE_SETTLE_MS
+  ? Math.max(0, parseInt(process.env.LIGHTHOUSE_SETTLE_MS, 10) || 0)
+  : 0;
+const LIGHTHOUSE_MAX_WAIT_MS = typeof process !== 'undefined' && process.env?.LIGHTHOUSE_MAX_WAIT_MS
+  ? Math.max(5000, parseInt(process.env.LIGHTHOUSE_MAX_WAIT_MS, 10) || 45000)
+  : 45000;
+
 async function runLighthouseAccessibility(url: string): Promise<Lhr> {
   const chrome = await chromeLauncher.launch({
-    chromeFlags: ['--headless=new', '--no-sandbox', '--disable-dev-shm-usage'],
+    chromeFlags: ['--headless=new', '--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
     logLevel: 'error',
   });
+
+  const config =
+    LIGHTHOUSE_SETTLE_MS > 0 || LIGHTHOUSE_MAX_WAIT_MS !== 45000
+      ? {
+          extends: 'lighthouse:default' as const,
+          settings: {
+            maxWaitForLoad: LIGHTHOUSE_MAX_WAIT_MS,
+            ...(LIGHTHOUSE_SETTLE_MS > 0 && { pauseAfterLoadMs: LIGHTHOUSE_SETTLE_MS }),
+          },
+        }
+      : undefined;
 
   try {
     const runnerResult = await lighthouse(
@@ -95,7 +113,7 @@ async function runLighthouseAccessibility(url: string): Promise<Lhr> {
         logLevel: 'error',
         output: 'json',
       },
-      undefined
+      config
     );
 
     if (!runnerResult?.lhr) {

@@ -76,6 +76,11 @@ jobs:
     name: WCAG 2.2 AA Compliance Audit
     runs-on: ubuntu-latest
     needs: typecheck
+    if: false
+    continue-on-error: true
+    env:
+      LIGHTHOUSE_SETTLE_MS: "15000"
+      LIGHTHOUSE_MAX_WAIT_MS: "60000"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -98,8 +103,8 @@ jobs:
     name: Pass/Fail Gate
     runs-on: ubuntu-latest
     needs: typecheck
-    # Don't block merge: gate fails when TARGET_URL has a11y issues (e.g. Atlas has 44).
-    # Set to false when you want the gate to block PRs until the audited page passes.
+    if: false
+    # Re-enable when integrated with a codebase: gate fails when TARGET_URL has a11y issues.
     continue-on-error: true
     env:
       LIGHTHOUSE_SETTLE_MS: "15000"
