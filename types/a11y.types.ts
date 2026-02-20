@@ -118,6 +118,8 @@ export interface WaveCaptureFinding {
   description: string;
   tab: WaveCaptureTab;
   wcagRef?: string;
+  /** Element(s) that triggered the finding: tag name, role, or short DOM snippet from WAVE capture */
+  elementInfo?: string;
 }
 
 export interface WaveJiraIssue {
@@ -132,4 +134,6 @@ export interface WaveJiraIssue {
   wcagCause?: string;
   actual?: string;
   expectedFix?: string;
+  /** Element(s) that triggered the finding (tag, role, or short DOM snippet) */
+  elements?: string;
 }
