@@ -127,7 +127,7 @@ function buildJiraReportHtml(issues: WaveJiraIssue[], sourceUrl: string, capture
         .map(
           (issue, idx) => {
             const title = issue.summary.replace(/^\[WAVE\]\[[^\]]+\]\s*/, '').trim() || `Issue ${idx + 1}`;
-            const elements = 'See WAVE overlay on capture for highlighted element(s).';
+            const elements = (issue.elements && issue.elements.trim()) || 'See WAVE overlay on capture for highlighted element(s).';
             const whereLocated = `WAVE tab: ${tab}`;
             const sections = [
               sec('Title', title),
