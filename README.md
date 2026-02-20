@@ -18,9 +18,13 @@ By running `TARGET_URL=https://your-app.com npx playwright test tests/accessibil
 
 Raw JSON means nothing to a product manager. This framework translates technical DOM violations into **executive-ready HTML dashboards** and **developer-ready Jira tickets**.
 
-*(Add a screenshot of your HTML report by adding an image to `docs/dashboard-preview.png`.)*
+![Accessibility Dashboard (Axe-core)](./docs/dashboard.png)
 
-![Dashboard Preview](./docs/dashboard-preview.png)
+*Above: Axe-core report for atlas.gc.ca — Element(s) and Where located show the exact DOM and selectors.*
+
+![Lighthouse Accessibility Report](./docs/dashboard-lighthouse.png)
+
+*Lighthouse report: failed audits with WCAG numbers and Copy for JIRA.*
 
 Every failing finding uses a **unified 8-section card**:
 

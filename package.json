@@ -15,6 +15,7 @@
     "a11y:lighthouse": "tsx scripts/run-a11y.ts --engine lighthouse",
     "a11y:wave": "tsx scripts/run-a11y.ts --engine wave",
     "a11y:wcag": "tsx scripts/run-wcag-audit.ts",
+    "a11y:gate": "tsx scripts/run-lighthouse-gate.ts",
     "a11y:wave-browser": "tsx scripts/run-wave-browser.ts",
     "a11y:wave-to-jira": "tsx scripts/wave-capture-to-jira.ts",
     "a11y:all": "tsx scripts/run-a11y.ts --engine axe && tsx scripts/run-a11y.ts --engine lighthouse",
