@@ -1,10 +1,13 @@
 node_modules/
-a11y-reports/
 dist/
+a11y-reports/
+wcag-audit-report.json
+test-results/
+playwright-report/
+blob-report/
+.wave-browser-profile/
+.wave-extension/
 *.log
 .env
 .env.local
 .DS_Store
-test-results/
-playwright-report/
-blob-report/
