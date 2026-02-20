@@ -199,6 +199,8 @@ enterprise-a11y-quality-gate/
 └── .github/workflows/a11y-gate.yml     # GitHub Actions CI workflow
 ```
 
+**Note (demo setup):** The workflow currently **skips** the **WCAG 2.2 AA Compliance Audit** and **Pass/Fail Gate** jobs (`if: false` in `a11y-gate.yml`). This repo is a demo that runs against public prod sites (e.g. atlas.gc.ca), not yet integrated with a codebase to scan. Skipping those jobs avoids failed status checks blocking merges. TypeScript Check, Axe-core + A11y Tree, and Lighthouse still run and upload reports. Re-enable the jobs by removing the `if: false` line from each when you integrate the gate with a real app.
+
 ---
 
 ## Environment Variables
