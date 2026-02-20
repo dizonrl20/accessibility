@@ -86,5 +86,5 @@ export async function runAxeScan(page: Page, url: string): Promise<AxeResults> {
     results.violations.push(targetSizeViolation);
   }
 
-  return results as AxeResults;
+  return results as unknown as AxeResults;
 }

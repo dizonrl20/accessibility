@@ -105,7 +105,7 @@ async function runLighthouseAccessibility(url: string): Promise<Lhr> {
     return runnerResult.lhr as Lhr;
   } finally {
     // Always attempt to close Chrome; ignore errors on kill.
-    await chrome.kill().catch(() => {});
+    await Promise.resolve(chrome.kill()).catch(() => {});
   }
 }
 

@@ -140,12 +140,12 @@ export async function runLighthouseScan(url: string): Promise<LighthouseResult> 
       throw new Error('Lighthouse did not return a result.');
     }
 
-    const artifacts = (runnerResult as { artifacts?: LighthouseArtifacts }).artifacts;
+    const artifacts = (runnerResult as unknown as { artifacts?: LighthouseArtifacts }).artifacts;
     const artifactTagMap = buildTagMapFromArtifacts(artifacts);
 
     return normalizeLhrToResult(url, runnerResult.lhr as LHR, artifactTagMap);
   } catch (err) {
-    await chrome.kill().catch(() => {});
+    await Promise.resolve(chrome.kill()).catch(() => {});
     throw err;
   }
 }

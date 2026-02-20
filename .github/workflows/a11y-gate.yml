@@ -1,0 +1,110 @@
+name: Accessibility Quality Gate
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: "URL to audit"
+        required: true
+        default: "https://example.com"
+
+env:
+  TARGET_URL: ${{ github.event.inputs.target_url || 'https://example.com' }}
+
+jobs:
+  typecheck:
+    name: TypeScript Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+
+  axe-scan:
+    name: Axe-core + A11y Tree Scan
+    runs-on: ubuntu-latest
+    needs: typecheck
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Run Axe-core + A11y Tree
+        run: npm run a11y:axe -- --url ${{ env.TARGET_URL }}
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: axe-reports
+          path: a11y-reports/
+          retention-days: 30
+
+  lighthouse-scan:
+    name: Lighthouse Accessibility Audit
+    runs-on: ubuntu-latest
+    needs: typecheck
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Run Lighthouse
+        run: npm run a11y:lighthouse -- --url ${{ env.TARGET_URL }}
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-reports
+          path: a11y-reports/
+          retention-days: 30
+
+  wcag-audit:
+    name: WCAG 2.2 AA Compliance Audit
+    runs-on: ubuntu-latest
+    needs: typecheck
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Run strict WCAG audit
+        run: npm run a11y:wcag -- ${{ env.TARGET_URL }}
+      - name: Upload WCAG report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wcag-audit-report
+          path: wcag-audit-report.json
+          retention-days: 30
+
+  pipeline-gate:
+    name: Pass/Fail Gate
+    runs-on: ubuntu-latest
+    needs: typecheck
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Accessibility gate (fail on violations)
+        run: TARGET_URL=${{ env.TARGET_URL }} npm run test:a11y

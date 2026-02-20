@@ -56,10 +56,11 @@ export interface AxeNodeResult {
 
 export interface AxeCheckResult {
   id: string;
-  impact: string | null;
+  impact: string;
   message: string;
-  data?: Record<string, unknown>;
+  data: Record<string, unknown> | null;
   relatedNodes?: AxeRelatedNode[];
+  [key: string]: unknown;
 }
 
 export interface AxeRelatedNode {

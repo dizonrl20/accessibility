@@ -1,19 +1,26 @@
 {
-  "name": "accessibility-a11y-suite",
+  "name": "enterprise-a11y-quality-gate",
   "version": "1.0.0",
-  "description": "Modular WCAG 2.2 AA / AODA accessibility testing with Axe-core and WAVE API",
+  "description": "Multi-engine WCAG 2.2 AA / AODA accessibility testing framework with executive-ready HTML reports and Jira integration",
+  "author": "Rod Dizon",
+  "license": "MIT",
   "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "a11y": "tsx scripts/run-a11y.ts",
     "a11y:axe": "tsx scripts/run-a11y.ts --engine axe",
-    "a11y:wave": "tsx scripts/run-a11y.ts --engine wave",
     "a11y:tree": "tsx scripts/run-a11y.ts --engine tree",
     "a11y:lighthouse": "tsx scripts/run-a11y.ts --engine lighthouse",
+    "a11y:wave": "tsx scripts/run-a11y.ts --engine wave",
     "a11y:wcag": "tsx scripts/run-wcag-audit.ts",
     "a11y:wave-browser": "tsx scripts/run-wave-browser.ts",
     "a11y:wave-to-jira": "tsx scripts/wave-capture-to-jira.ts",
+    "a11y:all": "tsx scripts/run-a11y.ts --engine axe && tsx scripts/run-a11y.ts --engine lighthouse",
     "test": "playwright test",
-    "test:a11y": "playwright test tests/accessibility-module.spec.ts"
+    "test:a11y": "playwright test tests/accessibility-module.spec.ts",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.10.2",
