@@ -3,9 +3,10 @@ import { runAxeScan } from '../engines/axe-engine.js';
 
 /**
  * Parameterized a11y test: run Axe-core (WCAG 2.2 AA) on the page specified by TARGET_URL.
- * Use in CI: TARGET_URL=https://example.com/page npx playwright test tests/accessibility-module.spec.ts
+ * CI gate uses Lighthouse (npm run a11y:gate) instead. For local Axe checks:
+ * TARGET_URL=https://your-site.com npx playwright test tests/accessibility-module.spec.ts
  */
-const TARGET_URL = process.env.TARGET_URL ?? 'https://example.com';
+const TARGET_URL = process.env.TARGET_URL ?? 'https://atlas.gc.ca/toporama/en/index.html';
 
 test.describe('Accessibility (WCAG 2.2 AA / AODA)', () => {
   test('Axe-core scan has no violations', async ({ page }) => {

@@ -113,12 +113,22 @@ function normalizeLhrToResult(
   };
 }
 
+/** Optional settle time after load (e.g. for map/SPA). Default 0; set LIGHTHOUSE_SETTLE_MS for map-heavy pages. */
+const LIGHTHOUSE_SETTLE_MS = typeof process !== 'undefined' && process.env?.LIGHTHOUSE_SETTLE_MS
+  ? Math.max(0, parseInt(process.env.LIGHTHOUSE_SETTLE_MS, 10) || 0)
+  : 0;
+/** Max wait for load (ms). Default 45s; set LIGHTHOUSE_MAX_WAIT_MS for slow pages. */
+const LIGHTHOUSE_MAX_WAIT_MS = typeof process !== 'undefined' && process.env?.LIGHTHOUSE_MAX_WAIT_MS
+  ? Math.max(5000, parseInt(process.env.LIGHTHOUSE_MAX_WAIT_MS, 10) || 45000)
+  : 45000;
+
 /**
  * Runs Lighthouse with only the accessibility category and returns
  * a normalized result. Extracts WCAG tags from artifacts (raw axe-core
  * data) so the HTML report can show correct WCAG criteria dynamically.
  *
  * No tokens, no AI — runs entirely locally via chrome-launcher.
+ * For map/SPA pages, set LIGHTHOUSE_SETTLE_MS (e.g. 15000) so the page can render before audit.
  */
 export async function runLighthouseScan(url: string): Promise<LighthouseResult> {
   const chrome = await chromeLauncher.launch({
@@ -126,13 +136,24 @@ export async function runLighthouseScan(url: string): Promise<LighthouseResult> 
     logLevel: 'error',
   });
 
+  const config =
+    LIGHTHOUSE_SETTLE_MS > 0 || LIGHTHOUSE_MAX_WAIT_MS !== 45000
+      ? {
+          extends: 'lighthouse:default' as const,
+          settings: {
+            maxWaitForLoad: LIGHTHOUSE_MAX_WAIT_MS,
+            ...(LIGHTHOUSE_SETTLE_MS > 0 && { pauseAfterLoadMs: LIGHTHOUSE_SETTLE_MS }),
+          },
+        }
+      : undefined;
+
   try {
     const runnerResult = await lighthouse(url, {
       port: chrome.port,
       onlyCategories: ['accessibility'],
       logLevel: 'error',
       output: 'json',
-    }, undefined);
+    }, config);
 
     await chrome.kill();
 
