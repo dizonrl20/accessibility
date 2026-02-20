@@ -102,7 +102,6 @@ jobs:
     # Set to false when you want the gate to block PRs until the audited page passes.
     continue-on-error: true
     env:
-      TARGET_URL: ${{ env.TARGET_URL }}
       LIGHTHOUSE_SETTLE_MS: "15000"
       LIGHTHOUSE_MAX_WAIT_MS: "60000"
     steps:
